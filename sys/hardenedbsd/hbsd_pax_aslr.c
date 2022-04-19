@@ -656,7 +656,7 @@ pax_aslr_rtld(struct proc *p, u_long *addr)
 void
 pax_aslr_stack(struct proc *p, vm_offset_t *addr)
 {
-	uintptr_t orig_addr;
+	uintptr_t orig_addr __unused;
 	uintptr_t random;
 
 	if (!pax_aslr_active(p))
@@ -676,7 +676,7 @@ pax_aslr_stack(struct proc *p, vm_offset_t *addr)
 void
 pax_aslr_thr_stack(struct proc *p, vm_offset_t *addr)
 {
-	uintptr_t orig_addr;
+	uintptr_t orig_addr __unused;
 	uintptr_t random;
 
 	if (!pax_aslr_active(p))
@@ -696,7 +696,7 @@ pax_aslr_thr_stack(struct proc *p, vm_offset_t *addr)
 void
 pax_aslr_stack_with_gap(struct proc *p, vm_offset_t *addr)
 {
-	uintptr_t orig_addr;
+	uintptr_t orig_addr __unused;
 	uintptr_t random;
 
 	if (!pax_aslr_active(p))
@@ -723,7 +723,7 @@ pax_aslr_execbase(struct proc *p, u_long *et_dyn_addrp)
 void
 pax_aslr_vdso(struct proc *p, vm_offset_t *addr)
 {
-	uintptr_t orig_addr;
+	uintptr_t orig_addr __unused;
 
 	if (!pax_aslr_active(p))
 		return;
