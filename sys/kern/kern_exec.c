@@ -560,6 +560,13 @@ interpret:
 	}
 #endif
 
+#ifdef PAX
+	error = pax_enforce_tpe(td, imgp->vp, imgp->execpath);
+	if (error) {
+		goto exec_fail_dealloc;
+	}
+#endif
+
 	imgp->object = imgp->vp->v_object;
 	if (imgp->object != NULL)
 		vm_object_reference(imgp->object);

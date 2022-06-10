@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2014, by Shawn Webb <shawn.webb at hardenedbsd.org>
+ * Copyright (c) 2014-2022, by Shawn Webb <shawn.webb@hardenedbsd.org>
  * Copyright (c) 2014-2017, by Oliver Pinter <oliver.pinter@hardenedbsd.org>
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include "opt_compat.h"
 #include "opt_pax.h"
@@ -37,17 +36,21 @@ __FBSDID("$FreeBSD$");
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/fcntl.h>
 #include <sys/imgact.h>
 #include <sys/imgact_elf.h>
 #include <sys/jail.h>
 #include <sys/ktr.h>
 #include <sys/libkern.h>
 #include <sys/lock.h>
+#include <sys/malloc.h>
+#include <sys/namei.h>
 #include <sys/pax.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
 #include <sys/sx.h>
 #include <sys/sysctl.h>
+#include <sys/vnode.h>
 
 #include "hbsd_pax_internal.h"
 
@@ -62,28 +65,62 @@ static int pax_procfs_harden_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_DISABLED;
+static int pax_tpe_global = PAX_FEATURE_OPTIN;
 #else
 static int pax_procfs_harden_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_ENABLED;
+static int pax_tpe_global = PAX_FEATURE_OPTIN;
 #endif
+
+static int pax_tpe_gid = 0;
+static int pax_tpe_negate = 0;
+static int pax_tpe_all = 0;
 
 TUNABLE_INT("hardening.procfs_harden", &pax_procfs_harden_global);
 TUNABLE_INT("hardening.randomize_pids", &pax_randomize_pids_global);
 TUNABLE_INT("hardening.insecure_kmod", &pax_insecure_kmod_global);
+TUNABLE_INT("hardening.tpe.status", &pax_tpe_global);
+TUNABLE_INT("hardening.tpe.gid", &pax_tpe_gid);
+TUNABLE_INT("hardening.tpe.negate", &pax_tpe_negate);
+TUNABLE_INT("hardening.tpe.all", &pax_tpe_all);
 
 #ifdef PAX_SYSCTLS
+SYSCTL_DECL(_hardening_pax);
+
 SYSCTL_HBSD_2STATE(pax_procfs_harden_global, pr_hbsd.hardening.procfs_harden,
     _hardening, procfs_harden,
     CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
     "Harden procfs, disabling write of /proc/pid/mem");
-#endif
-
-#ifdef PAX_SYSCTLS
 SYSCTL_HBSD_2STATE_GLOBAL(pax_insecure_kmod_global, _hardening, insecure_kmod,
     CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
     "Enable loading of inecure kernel modules");
+#endif
+
+SYSCTL_DECL(_hardening_pax);
+SYSCTL_NODE(_hardening_pax, OID_AUTO, tpe, CTLFLAG_RD, 0,
+    "Settings for Trusted Path Execution (TPE).");
+
+SYSCTL_HBSD_4STATE(pax_tpe_global, pr_hbsd.hardening.tpe,
+    _hardening_pax_tpe, status,
+    CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_PRISON|CTLFLAG_SECURE);
+SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, gid,
+    CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_gid, 0,
+    "Untrusted TPE GID");
+SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, negate,
+    CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_negate, 0,
+    "Negate TPE GID logic");
+SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, all,
+    CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_all, 0,
+    "Apply TPE to all users");
+
+#if 0
+#ifdef PAX_JAIL_SUPPORT
+SYSCTL_JAIL_PARAM_SUBNODE(hardening_pax, tpe, "TPE");
+SYSCTL_JAIL_PARAM(_hardening_pax_tpe, status,
+    CTLTYPE_INT | CTLFLAG_RD, "I", "TPE status");
+#endif
 #endif
 
 #if 0
@@ -93,6 +130,8 @@ SYSCTL_JAIL_PARAM(hardening, procfs_harden,
     "disabling write of /proc/pid/mem");
 #endif
 #endif
+
+static bool _pax_tpe_active(struct thread *);
 
 bool
 pax_insecure_kmod(void)
@@ -149,6 +188,7 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 		/* prison0 has no parent, use globals */
 		pr->pr_hbsd.hardening.procfs_harden =
 		    pax_procfs_harden_global;
+		pr->pr_hbsd.hardening.tpe = pax_tpe_global;
 		pr->pr_allow &= ~(PR_ALLOW_UNPRIV_DEBUG);
 	} else {
 		KASSERT(pr->pr_parent != NULL,
@@ -157,6 +197,7 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 
 		pr->pr_hbsd.hardening.procfs_harden =
 		    pr_p->pr_hbsd.hardening.procfs_harden;
+		pr->pr_hbsd.hardening.tpe = pr_p->pr_hbsd.hardening.tpe;
 #if 0
 		error = pax_handle_prison_param(opts, "hardening.procfs_harden",
 		    &pr->pr_hbsd.hardening.procfs_harden);
@@ -166,6 +207,57 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 	}
 
 	return (0);
+}
+
+pax_flag_t
+pax_hardening_setup_flags(struct image_params *imgp, struct thread *td,
+    pax_flag_t mode)
+{
+	struct prison *pr;
+	pax_flag_t flags;
+	uint32_t status;
+
+	flags = 0;
+	status = 0;
+
+	pr = pax_get_prison_td(td);
+	status = pr->pr_hbsd.hardening.tpe;
+	if (status == PAX_FEATURE_DISABLED) {
+		flags &= ~PAX_NOTE_TPE;
+		flags |= PAX_NOTE_NOTPE;
+		return (flags);
+	}
+	if (status == PAX_FEATURE_FORCE_ENABLED) {
+		flags |= PAX_NOTE_TPE;
+		flags &= ~PAX_NOTE_NOTPE;
+		return (flags);
+	}
+
+	if (status == PAX_FEATURE_OPTIN) {
+		if ((mode & PAX_NOTE_TPE) == PAX_NOTE_TPE) {
+			flags |= PAX_NOTE_TPE;
+			flags &= ~PAX_NOTE_NOTPE;
+		} else {
+			flags &= ~PAX_NOTE_TPE;
+			flags |= PAX_NOTE_NOTPE;
+		}
+		return (flags);
+	}
+
+	if (status == PAX_FEATURE_OPTOUT) {
+		if ((mode & PAX_NOTE_NOTPE) == PAX_NOTE_NOTPE) {
+			flags &= ~PAX_NOTE_TPE;
+			flags |= PAX_NOTE_NOTPE;
+		} else {
+			flags |= PAX_NOTE_TPE;
+			flags &= ~PAX_NOTE_NOTPE;
+		}
+		return (flags);
+	}
+
+	flags |= PAX_NOTE_TPE;
+	flags &= ~PAX_NOTE_NOTPE;
+	return (flags);
 }
 
 int
@@ -178,6 +270,91 @@ pax_procfs_harden(struct thread *td)
 	return (pr->pr_hbsd.hardening.procfs_harden ? EPERM : 0);
 }
 
+int
+pax_enforce_tpe(struct thread *td, struct vnode *vn, const char *path)
+{
+	char *parent_path, *tmp;
+	struct nameidata nd;
+	struct prison *pr;
+	struct vattr vap;
+	int error;
+
+	if (td == NULL || vn == NULL || path == NULL) {
+		return (EDOOFUS);
+	}
+
+	pr = pax_get_prison_td(td);
+	if (pr->pr_hbsd.hardening.tpe == PAX_FEATURE_DISABLED) {
+		return (0);
+	}
+
+	if (!_pax_tpe_active(td)) {
+		return (0);
+	}
+
+	tmp = strrchr(path, '/');
+	if (tmp == NULL) {
+		return (EDOOFUS);
+	}
+	if (strlen(tmp) < 2) {
+		return (0);
+	}
+
+	parent_path = malloc((tmp - path) + 1, M_TEMP,
+	    M_WAITOK | M_ZERO);
+	strncpy(parent_path, path, tmp - path);
+
+	memset(&nd, 0, sizeof(nd));
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, parent_path);
+	nd.ni_debugflags |= NAMEI_DBG_INITED;
+	error = namei(&nd);
+	if (error) {
+		free(parent_path, M_TEMP);
+		NDFREE_PNBUF(&nd);
+		return (error);
+	}
+
+	error = VOP_GETATTR(nd.ni_vp, &vap, td->td_ucred);
+	if (error) {
+		goto end;
+	}
+
+	if (vap.va_uid != 0) {
+		error = EPERM;
+		goto end;
+	}
+
+	if ((vap.va_mode & (S_IWGRP | S_IWOTH)) != 0) {
+		error = EPERM;
+		goto end;
+	}
+
+end:
+	NDFREE_PNBUF(&nd);
+	free(parent_path, M_TEMP);
+	return (error);
+}
+
+static bool
+_pax_tpe_active(struct thread *td)
+{
+	pax_flag_t flags;
+
+	pax_get_flags(td->td_proc, &flags);
+	if ((flags & PAX_NOTE_NOTPE) == PAX_NOTE_NOTPE) {
+		return (false);
+	}
+
+	if (pax_tpe_all) {
+		return (true);
+	}
+
+	if (td->td_ucred->cr_gid == pax_tpe_gid) {
+		return (pax_tpe_negate == 0);
+	}
+
+	return (pax_tpe_negate != 0);
+}
 
 extern int randompid;
 
