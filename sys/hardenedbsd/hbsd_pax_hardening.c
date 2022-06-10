@@ -77,6 +77,7 @@ static int pax_tpe_global = PAX_FEATURE_OPTIN;
 static int pax_tpe_gid = 0;
 static int pax_tpe_negate = 0;
 static int pax_tpe_all = 0;
+static int pax_tpe_root_owned = 1;
 
 TUNABLE_INT("hardening.procfs_harden", &pax_procfs_harden_global);
 TUNABLE_INT("hardening.randomize_pids", &pax_randomize_pids_global);
@@ -85,6 +86,7 @@ TUNABLE_INT("hardening.tpe.status", &pax_tpe_global);
 TUNABLE_INT("hardening.tpe.gid", &pax_tpe_gid);
 TUNABLE_INT("hardening.tpe.negate", &pax_tpe_negate);
 TUNABLE_INT("hardening.tpe.all", &pax_tpe_all);
+TUNABLE_INT("hardening.tpe.root_owned", &pax_tpe_root_owned);
 
 #ifdef PAX_SYSCTLS
 SYSCTL_DECL(_hardening_pax);
@@ -114,6 +116,9 @@ SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, negate,
 SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, all,
     CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_all, 0,
     "Apply TPE to all users");
+SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, root_owned,
+    CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_root_owned, 0,
+    "Ensure directory is root-owned");
 
 #if 0
 #ifdef PAX_JAIL_SUPPORT
@@ -319,9 +324,11 @@ pax_enforce_tpe(struct thread *td, struct vnode *vn, const char *path)
 		goto end;
 	}
 
-	if (vap.va_uid != 0) {
-		error = EPERM;
-		goto end;
+	if (pax_tpe_root_owned) {
+		if (vap.va_uid != 0) {
+			error = EPERM;
+			goto end;
+		}
 	}
 
 	if ((vap.va_mode & (S_IWGRP | S_IWOTH)) != 0) {

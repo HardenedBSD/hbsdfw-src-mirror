@@ -57,12 +57,13 @@ struct hbsd_features {
 		pax_state_t	 procfs_harden;		/* (p) Harden procfs */
 		pax_state_t	 tpe;			/* (p) Trusted Path Execution */
 		/*
-		 * tpe_gid, tpe_all, and tpe_negate are unused, but
-		 * planned.
+		 * tpe_gid, tpe_all, tpe_negate, and tpe_root_owned are
+		 * unused, but planned.
 		 */
 		int		 tpe_gid;
 		int		 tpe_all;
 		int		 tpe_negate;
+		int		 tpe_root_owned;
 	} hardening;
 	struct hbsd_log {
 		pax_state_t	log;		/* (p) Per-jail logging status */
