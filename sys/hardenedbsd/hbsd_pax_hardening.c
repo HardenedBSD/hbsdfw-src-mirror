@@ -98,7 +98,6 @@ SYSCTL_HBSD_2STATE(pax_procfs_harden_global, pr_hbsd.hardening.procfs_harden,
 SYSCTL_HBSD_2STATE_GLOBAL(pax_insecure_kmod_global, _hardening, insecure_kmod,
     CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
     "Enable loading of inecure kernel modules");
-#endif
 
 SYSCTL_DECL(_hardening_pax);
 SYSCTL_NODE(_hardening_pax, OID_AUTO, tpe, CTLFLAG_RD, 0,
@@ -119,6 +118,7 @@ SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, all,
 SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, root_owned,
     CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_root_owned, 0,
     "Ensure directory is root-owned");
+#endif
 
 #if 0
 #ifdef PAX_JAIL_SUPPORT
