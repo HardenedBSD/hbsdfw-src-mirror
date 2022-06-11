@@ -204,6 +204,9 @@ static void rtld_fill_dl_phdr_info(const Obj_Entry *obj,
 static uint32_t gnu_hash(const char *);
 static bool matched_symbol(SymLook *, const Obj_Entry *, Sym_Match_Result *,
     const unsigned long);
+#ifdef HARDENEDBSD
+static bool cache_harden_rtld(void);
+#endif
 
 void r_debug_state(struct r_debug *, struct link_map *) __noinline __exported;
 void _r_debug_postinit(struct link_map *) __noinline __exported;
@@ -242,6 +245,7 @@ static unsigned int obj_loads;	/* Number of loads of objects (gen count) */
 
 #ifdef HARDENEDBSD
 static Elf_Word pax_flags = 0;	/* PaX / HardenedBSD flags */
+static bool harden_rtld = true;
 #endif
 
 static Objlist list_global =	/* Objects dlopened with RTLD_GLOBAL */
@@ -326,6 +330,23 @@ const char *ld_standard_library_path = STANDARD_LIBRARY_PATH;
 const char *ld_env_prefix = LD_;
 
 static void (*rtld_exit_ptr)(void);
+
+static bool
+cache_harden_rtld(void)
+{
+    int err, res;
+    size_t sz;
+
+    sz = sizeof(int);
+    err = sysctlbyname("hardening.harden_rtld", &res, &sz, NULL, 0);
+    if (err == 0) {
+        harden_rtld = res;
+    } else {
+        harden_rtld = true;
+    }
+
+    return (harden_rtld);
+}
 
 /*
  * Fill in a DoneList with an allocation large enough to hold all of
@@ -614,6 +635,8 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
         pax_flags = aux_info[AT_PAXFLAGS]->a_un.a_val;
         aux_info[AT_PAXFLAGS]->a_un.a_val = 0;
     }
+
+    cache_harden_rtld();
 #endif
 
     trust = !issetugid();
@@ -2771,6 +2794,10 @@ load_preload_objects(const char *penv, bool isfd)
 
 	if (penv == NULL)
 		return (0);
+
+	if (harden_rtld) {
+		return (0);
+	}
 
 	p = psave = xstrdup(penv);
 	p += strspn(p, delim);

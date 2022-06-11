@@ -66,12 +66,14 @@ static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_tpe_global = PAX_FEATURE_OPTIN;
+static int harden_rtld_global = PAX_FEATURE_SIMPLE_ENABLED;
 #else
 static int pax_procfs_harden_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_tpe_global = PAX_FEATURE_OPTIN;
+static int harden_rtld_global = PAX_FEATURE_SIMPLE_DISABLED;
 #endif
 
 static int pax_tpe_gid = 0;
@@ -87,6 +89,7 @@ TUNABLE_INT("hardening.tpe.gid", &pax_tpe_gid);
 TUNABLE_INT("hardening.tpe.negate", &pax_tpe_negate);
 TUNABLE_INT("hardening.tpe.all", &pax_tpe_all);
 TUNABLE_INT("hardening.tpe.root_owned", &pax_tpe_root_owned);
+TUNABLE_INT("hardening.harden_rtld", &harden_rtld_global);
 
 #ifdef PAX_SYSCTLS
 SYSCTL_DECL(_hardening_pax);
@@ -98,6 +101,10 @@ SYSCTL_HBSD_2STATE(pax_procfs_harden_global, pr_hbsd.hardening.procfs_harden,
 SYSCTL_HBSD_2STATE_GLOBAL(pax_insecure_kmod_global, _hardening, insecure_kmod,
     CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
     "Enable loading of inecure kernel modules");
+SYSCTL_HBSD_2STATE(harden_rtld_global, pr_hbsd.hardening.harden_rtld,
+    _hardening, harden_rtld,
+    CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
+    "Harden RTLD");
 
 SYSCTL_DECL(_hardening_pax);
 SYSCTL_NODE(_hardening_pax, OID_AUTO, tpe, CTLFLAG_RD, 0,
@@ -194,6 +201,7 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 		pr->pr_hbsd.hardening.procfs_harden =
 		    pax_procfs_harden_global;
 		pr->pr_hbsd.hardening.tpe = pax_tpe_global;
+		pr->pr_hbsd.hardening.harden_rtld = harden_rtld_global;
 		pr->pr_allow &= ~(PR_ALLOW_UNPRIV_DEBUG);
 	} else {
 		KASSERT(pr->pr_parent != NULL,
@@ -203,6 +211,8 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 		pr->pr_hbsd.hardening.procfs_harden =
 		    pr_p->pr_hbsd.hardening.procfs_harden;
 		pr->pr_hbsd.hardening.tpe = pr_p->pr_hbsd.hardening.tpe;
+		pr->pr_hbsd.hardening.harden_rtld =
+		    pr_p->pr_hbsd.hardening.harden_rtld;
 #if 0
 		error = pax_handle_prison_param(opts, "hardening.procfs_harden",
 		    &pr->pr_hbsd.hardening.procfs_harden);
