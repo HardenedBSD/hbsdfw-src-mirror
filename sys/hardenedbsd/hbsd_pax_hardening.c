@@ -80,6 +80,7 @@ static int pax_tpe_gid = 0;
 static int pax_tpe_negate = 0;
 static int pax_tpe_all = 0;
 static int pax_tpe_root_owned = 1;
+static int pax_tpe_user_owned = 0;
 
 TUNABLE_INT("hardening.procfs_harden", &pax_procfs_harden_global);
 TUNABLE_INT("hardening.randomize_pids", &pax_randomize_pids_global);
@@ -125,6 +126,9 @@ SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, all,
 SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, root_owned,
     CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_root_owned, 0,
     "Ensure directory is root-owned");
+SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, user_owned,
+    CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_user_owned, 0,
+    "Ensure directory is user-owned");
 #endif
 
 #if 0
@@ -336,6 +340,13 @@ pax_enforce_tpe(struct thread *td, struct vnode *vn, const char *path)
 
 	if (pax_tpe_root_owned) {
 		if (vap.va_uid != 0) {
+			error = EPERM;
+			goto end;
+		}
+	}
+
+	if (pax_tpe_user_owned) {
+		if (vap.va_uid != 0 && vap.va_uid != td->td_ucred->cr_uid) {
 			error = EPERM;
 			goto end;
 		}
