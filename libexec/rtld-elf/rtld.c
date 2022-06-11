@@ -641,7 +641,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     cache_harden_rtld();
 #endif
 
-    trust = !issetugid();
+    trust = !(issetugid() || harden_rtld);
     direct_exec = false;
 
     md_abi_variant_hook(aux_info);
