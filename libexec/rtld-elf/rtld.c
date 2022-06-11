@@ -5217,6 +5217,12 @@ trace_loaded_objects(Obj_Entry *obj, bool show_preload)
 	const char *name, *path;
 	bool first_spurious, list_containers;
 
+#ifdef HARDENEDBSD
+	if (harden_rtld) {
+		return;
+	}
+#endif
+
 	trace_calc_fmts(&main_local, &fmt1, &fmt2);
 	list_containers = ld_get_env_var(LD_TRACE_LOADED_OBJECTS_ALL) != NULL;
 
