@@ -64,6 +64,7 @@ struct hbsd_features {
 		int		 tpe_all;
 		int		 tpe_negate;
 		int		 tpe_root_owned;
+		pax_state_t	 harden_rtld;
 	} hardening;
 	struct hbsd_log {
 		pax_state_t	log;		/* (p) Per-jail logging status */
