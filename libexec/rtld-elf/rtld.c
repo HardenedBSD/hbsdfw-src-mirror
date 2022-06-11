@@ -797,6 +797,12 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     ld_tracing = ld_get_env_var(LD_TRACE_LOADED_OBJECTS);
     ld_utrace = ld_get_env_var(LD_UTRACE);
 
+#ifdef HARDENEDBSD
+    if (harden_rtld) {
+        dangerous_ld_env = harden_rtld;
+    }
+#endif
+
     set_ld_elf_hints_path();
     if (ld_debug != NULL && *ld_debug != '\0')
 	debug = 1;
