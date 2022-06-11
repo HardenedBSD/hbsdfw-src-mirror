@@ -331,6 +331,7 @@ const char *ld_env_prefix = LD_;
 
 static void (*rtld_exit_ptr)(void);
 
+#ifdef HARDENEDBSD
 static bool
 cache_harden_rtld(void)
 {
@@ -347,6 +348,7 @@ cache_harden_rtld(void)
 
     return (harden_rtld);
 }
+#endif
 
 /*
  * Fill in a DoneList with an allocation large enough to hold all of
@@ -2795,9 +2797,11 @@ load_preload_objects(const char *penv, bool isfd)
 	if (penv == NULL)
 		return (0);
 
+#ifdef HARDENEDBSD
 	if (harden_rtld) {
 		return (0);
 	}
+#endif
 
 	p = psave = xstrdup(penv);
 	p += strspn(p, delim);
