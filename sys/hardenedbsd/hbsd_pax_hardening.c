@@ -345,7 +345,7 @@ pax_enforce_tpe(struct thread *td, struct vnode *vn, const char *path)
 		}
 	}
 
-	if (pax_tpe_user_owned) {
+	if (pax_tpe_user_owned && td->td_ucred->cr_uid != 0) {
 		if (vap.va_uid != 0 && vap.va_uid != td->td_ucred->cr_uid) {
 			error = EPERM;
 			goto end;
