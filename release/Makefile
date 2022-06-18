@@ -234,6 +234,7 @@ disc1: packagesystem
 	cp ${.CURDIR}/rc.local ${.TARGET}/etc
 .if defined(WITH_PKGBASE)
 	cp ${.CURDIR}/HardenedBSD-Base.conf ${.TARGET}/etc/pkg/
+	cp ${.CURDIR}/hbsdfw.conf ${.TARGET}/etc/pkg/
 	mkdir ${.TARGET}/conf
 .if defined(WITH_SERIAL)
 	cp ${.CURDIR}/config_serial.xml ${.TARGET}/conf/config.xml
