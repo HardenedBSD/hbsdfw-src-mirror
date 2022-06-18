@@ -109,7 +109,7 @@ fi
 
 if [ "${install_kernel}" == "yes" ]; then
 	if [ "${install_debug}" == "yes" ]; then
-		pkg_list=$(pkg -o ASSUME_ALWAYS_YES=yes -r ${BSDINSTALL_CHROOT} search -g 'HardenedBSD-kernel-*' | awk '{print $1}')
+		pkg_list=$(pkg -o ASSUME_ALWAYS_YES=yes -r ${BSDINSTALL_CHROOT} search -g '${vendor}-kernel-*' | awk '{print $1}')
 	else
 		pkg_list=$(pkg -o ASSUME_ALWAYS_YES=yes -r ${BSDINSTALL_CHROOT} search -g 'HardenedBSD-kernel-*' | grep -vE "\-debug" | awk '{print $1}')
 		f_pkginstall "kernel" "$pkg_list"

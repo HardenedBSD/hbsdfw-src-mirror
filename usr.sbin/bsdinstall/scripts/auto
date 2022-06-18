@@ -153,7 +153,10 @@ trap true SIGINT	# This section is optional
 bsdinstall keymap
 
 trap error SIGINT	# Catch cntrl-C here
-bsdinstall hostname || error "Set hostname failed"
+
+if [ ${VENDOR_INSTALL} -eq 0 ]; then
+    bsdinstall hostname || error "Set hostname failed"
+fi
 
 export DISTRIBUTIONS="base.txz kernel.txz"
 if [ ${PKGBASE_INSTALL} -eq 0 && -f $BSDINSTALL_DISTDIR/MANIFEST ]; then
@@ -330,20 +333,20 @@ case "$PARTMODE" in
 	bsdinstall autopart || error "Partitioning error"
 	bsdinstall mount || error "Failed to mount filesystem"
 	;;
-"$msg_shell")		# Shell
-	clear
-	echo "Use this shell to set up partitions for the new system. When finished, mount the system at $BSDINSTALL_CHROOT and place an fstab file for the new system at $PATH_FSTAB. Then type 'exit'. You can also enter the partition editor at any time by entering 'bsdinstall partedit'."
-	sh 2>&1
-	;;
-"$msg_manual")		# Manual
-	if f_isset debugFile; then
-		# Give partedit the path to our logfile so it can append
-		BSDINSTALL_LOG="${debugFile#+}" bsdinstall partedit || error "Partitioning error"
-	else
-		bsdinstall partedit || error "Partitioning error"
-	fi
-	bsdinstall mount || error "Failed to mount filesystem"
-	;;
+#"$msg_shell")		# Shell
+#   clear
+#   echo "Use this shell to set up partitions for the new system. When finished, mount the system at $BSDINSTALL_CHROOT and place an fstab file for the new system at $PATH_FSTAB. Then type 'exit'. You can also enter the partition editor at any time by entering 'bsdinstall partedit'."
+#   sh 2>&1
+#   ;;
+#"$msg_manual")		# Manual
+#   if f_isset debugFile; then
+#      # Give partedit the path to our logfile so it can append
+#     BSDINSTALL_LOG="${debugFile#+}" bsdinstall partedit || error "Partitioning error"
+#   else
+#      bsdinstall partedit || error "Partitioning error"
+#   fi
+#   bsdinstall mount || error "Failed to mount filesystem"
+#   ;;
 *)
 	error "Unknown partitioning mode"
 	;;
