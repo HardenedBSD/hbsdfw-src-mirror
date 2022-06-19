@@ -120,7 +120,7 @@ prefix##_ulog_##name(const char* fmt, ...)				\
 	va_end(args);							\
 }
 
-static int hardening_log_log = PAX_FEATURE_SIMPLE_ENABLED;
+static int hardening_log_log = PAX_FEATURE_SIMPLE_DISABLED;
 static int hardening_log_ulog = PAX_FEATURE_SIMPLE_DISABLED;
 
 TUNABLE_INT("hardening.log.log", &hardening_log_log);
