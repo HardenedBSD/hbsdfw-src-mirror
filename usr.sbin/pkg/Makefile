@@ -6,7 +6,7 @@ PROG=	pkg
 SRCS=	pkg.c dns_utils.c config.c
 MAN=	pkg.7
 
-CONFS=		HardenedBSD.conf HardenedBSD.tor.conf
+CONFS=		HardenedBSD.conf HardenedBSD.tor.conf HBSDFW.conf
 CONFSDIR=	/etc/pkg
 CONFSMODE=	644
 
