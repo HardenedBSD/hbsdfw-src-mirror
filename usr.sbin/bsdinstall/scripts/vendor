@@ -44,7 +44,7 @@ mkdir -p ${BSDINSTALL_CHROOT}/hbsdfw-installer-pkgs
 # otherwise missing packages. On the plus side, this allows us to cache the
 # packages that were included in the original install image.
 cp -R /usr/freebsd-dist/hbsdfw/ ${BSDINSTALL_CHROOT}/hbsdfw-installer-pkgs/
-chroot ${BSDINSTALL_CHROOT} find /hbsdfw-installer-pkgs/All -name \*.pkg | xargs chroot ${BSDINSTALL_CHROOT} pkg add -fM
+chroot ${BSDINSTALL_CHROOT} find /hbsdfw-installer-pkgs/All -name \*.pkg | xargs chroot ${BSDINSTALL_CHROOT} env ASSUME_ALWAYS_YES=yes pkg add -fM
 
 # TODO add this to the mtree files
 mkdir -p ${BSDINSTALL_CHROOT}/conf
