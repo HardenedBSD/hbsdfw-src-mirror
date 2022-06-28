@@ -233,7 +233,6 @@ disc1: packagesystem
 	echo kernels_autodetect=\"NO\" >> ${.TARGET}/boot/loader.conf
 	cp ${.CURDIR}/rc.local ${.TARGET}/etc
 .if defined(WITH_PKGBASE)
-	cp ${.CURDIR}/HardenedBSD-Base.conf ${.TARGET}/etc/pkg/
 	cp ${.CURDIR}/hbsdfw.conf ${.TARGET}/etc/pkg/
 	mkdir ${.TARGET}/conf
 .if defined(WITH_SERIAL)
