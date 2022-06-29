@@ -233,7 +233,7 @@ disc1: packagesystem
 	echo kernels_autodetect=\"NO\" >> ${.TARGET}/boot/loader.conf
 	cp ${.CURDIR}/rc.local ${.TARGET}/etc
 .if defined(WITH_PKGBASE)
-	cp ${.CURDIR}/hbsdfw.conf ${.TARGET}/etc/pkg/
+	cp ${.CURDIR}/002-hbsdfw-installer.conf ${.TARGET}/etc/pkg/
 	mkdir ${.TARGET}/conf
 .if defined(WITH_SERIAL)
 	cp ${.CURDIR}/config_serial.xml ${.TARGET}/conf/config.xml
