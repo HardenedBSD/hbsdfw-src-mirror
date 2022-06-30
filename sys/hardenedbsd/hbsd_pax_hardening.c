@@ -104,7 +104,7 @@ SYSCTL_HBSD_2STATE_GLOBAL(pax_insecure_kmod_global, _hardening, insecure_kmod,
     "Enable loading of inecure kernel modules");
 SYSCTL_HBSD_2STATE(harden_rtld_global, pr_hbsd.hardening.harden_rtld,
     _hardening, harden_rtld,
-    CTLTYPE_INT|CTLFLAG_RWTUN|CTLFLAG_SECURE,
+    CTLTYPE_INT|CTLFLAG_PRISON|CTLFLAG_RWTUN|CTLFLAG_SECURE,
     "Harden RTLD");
 
 SYSCTL_DECL(_hardening_pax);
@@ -129,6 +129,12 @@ SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, root_owned,
 SYSCTL_INT(_hardening_pax_tpe, OID_AUTO, user_owned,
     CTLFLAG_RWTUN|CTLFLAG_SECURE, &pax_tpe_user_owned, 0,
     "Ensure directory is user-owned");
+#endif
+
+#ifdef PAX_JAIL_SUPPORT
+SYSCTL_DECL(_security_jail_param_hardening);
+SYSCTL_JAIL_PARAM(_hardening, harden_rtld,
+    CTLTYPE_INT | CTLFLAG_RD, "I", "RTLD Hardening");
 #endif
 
 #if 0
@@ -193,13 +199,12 @@ int
 pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 {
 	struct prison *pr_p;
-#if 0
 	int error;
-#endif
 
 	CTR2(KTR_PAX, "%s: Setting prison %s PaX variables\n",
 	    __func__, pr->pr_name);
 
+	error = 0;
 	if (pr == &prison0) {
 		/* prison0 has no parent, use globals */
 		pr->pr_hbsd.hardening.procfs_harden =
@@ -217,15 +222,11 @@ pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts)
 		pr->pr_hbsd.hardening.tpe = pr_p->pr_hbsd.hardening.tpe;
 		pr->pr_hbsd.hardening.harden_rtld =
 		    pr_p->pr_hbsd.hardening.harden_rtld;
-#if 0
-		error = pax_handle_prison_param(opts, "hardening.procfs_harden",
-		    &pr->pr_hbsd.hardening.procfs_harden);
-		if (error != 0)
-			return (error);
-#endif
+		error = pax_handle_prison_param(opts, "hardening.harden_rtld",
+		    &(pr->pr_hbsd.hardening.harden_rtld));
 	}
 
-	return (0);
+	return (error);
 }
 
 pax_flag_t
