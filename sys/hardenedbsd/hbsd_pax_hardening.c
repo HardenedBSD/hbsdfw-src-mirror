@@ -65,20 +65,20 @@ static int pax_procfs_harden_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_ENABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_DISABLED;
-static int pax_tpe_global = PAX_FEATURE_OPTIN;
+static int pax_tpe_global = PAX_FEATURE_OPTOUT;
 static int harden_rtld_global = PAX_FEATURE_SIMPLE_ENABLED;
 #else
 static int pax_procfs_harden_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_randomize_pids_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_init_hardening_global = PAX_FEATURE_SIMPLE_DISABLED;
 static int pax_insecure_kmod_global = PAX_FEATURE_SIMPLE_ENABLED;
-static int pax_tpe_global = PAX_FEATURE_OPTIN;
+static int pax_tpe_global = PAX_FEATURE_OPTOUT;
 static int harden_rtld_global = PAX_FEATURE_SIMPLE_DISABLED;
 #endif
 
 static int pax_tpe_gid = 0;
 static int pax_tpe_negate = 0;
-static int pax_tpe_all = 0;
+static int pax_tpe_all = 1;
 static int pax_tpe_root_owned = 1;
 static int pax_tpe_user_owned = 0;
 
