@@ -325,7 +325,7 @@ pax_enforce_tpe(struct thread *td, struct vnode *vn, const char *path)
 	strncpy(parent_path, path, tmp - path);
 
 	memset(&nd, 0, sizeof(nd));
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, parent_path);
+	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, parent_path, td);
 	nd.ni_debugflags |= NAMEI_DBG_INITED;
 	error = namei(&nd);
 	if (error) {
