@@ -1455,7 +1455,10 @@ gicv3_iommu_init(device_t dev, device_t child, struct iommu_domain **domain)
 
 	sc = device_get_softc(dev);
 	ctx = iommu_get_dev_ctx(child);
-	error = iommu_map_msi(ctx, PAGE_SIZE, GITS_TRANSLATER,
+	if (ctx == NULL)
+		return (ENXIO);
+	/* Map the page containing the GITS_TRANSLATER register. */
+	error = iommu_map_msi(ctx, PAGE_SIZE, 0,
 	    IOMMU_MAP_ENTRY_WRITE, IOMMU_MF_CANWAIT, &sc->ma);
 	*domain = iommu_get_ctx_domain(ctx);
 
@@ -1468,6 +1471,9 @@ gicv3_iommu_deinit(device_t dev, device_t child)
 	struct iommu_ctx *ctx;
 
 	ctx = iommu_get_dev_ctx(child);
+	if (ctx == NULL)
+		return;
+
 	iommu_unmap_msi(ctx);
 }
 #endif
