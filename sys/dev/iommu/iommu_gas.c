@@ -320,7 +320,7 @@ iommu_gas_match_one(struct iommu_gas_match_args *a, iommu_gaddr_t beg,
 		return (false);
 
 	/* No boundary crossing. */
-	if (iommu_test_boundary(a->entry->start + a->offset, a->size,
+	if (vm_addr_bound_ok(a->entry->start + a->offset, a->size,
 	    a->common->boundary))
 		return (true);
 
@@ -335,7 +335,7 @@ iommu_gas_match_one(struct iommu_gas_match_args *a, iommu_gaddr_t beg,
 	/* IOMMU_PAGE_SIZE to create gap after new entry. */
 	if (start + a->offset + a->size + IOMMU_PAGE_SIZE <= end &&
 	    start + a->offset + a->size <= maxaddr &&
-	    iommu_test_boundary(start + a->offset, a->size,
+	    vm_addr_bound_ok(start + a->offset, a->size,
 	    a->common->boundary)) {
 		a->entry->start = start;
 		return (true);
@@ -397,16 +397,11 @@ iommu_gas_lowermatch(struct iommu_gas_match_args *a, struct iommu_map_entry *ent
 	 */
 	entry = first;
 	while (entry != NULL) {
-		if ((first = RB_LEFT(entry, rb_entry)) != NULL) {
-			if (first->last >= a->common->lowaddr) {
-				/* All remaining ranges >= lowaddr */
-				break;
-			}
-			if (iommu_gas_match_one(a, first->last, entry->start,
-			    a->common->lowaddr)) {
-				iommu_gas_match_insert(a);
-				return (0);
-			}
+		if ((first = RB_LEFT(entry, rb_entry)) != NULL &&
+		    iommu_gas_match_one(a, first->last, entry->start,
+		    a->common->lowaddr)) {
+			iommu_gas_match_insert(a);
+			return (0);
 		}
 		if (entry->end >= a->common->lowaddr) {
 			/* All remaining ranges >= lowaddr */
