@@ -190,19 +190,6 @@ SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, pie_enable, CTLFLAG_RWTUN,
     __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE))
     ": enable address map randomization for PIE binaries");
 
-<<<<<<< HEAD
-=======
-/*
- * Sbrk is now deprecated and it can be assumed, that in most
- * cases it will not be used anyway. This setting is valid only
- * for the ASLR enabled and allows for utilizing the bss grow region.
- */
->>>>>>> origin/freebsd/13-stable/main
-static int __elfN(aslr_honor_sbrk) = 0;
-SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, honor_sbrk, CTLFLAG_RW,
-    &__elfN(aslr_honor_sbrk), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE)) ": assume sbrk is used");
-
 static int __elfN(sigfastblock) = 1;
 SYSCTL_INT(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO, sigfastblock,
     CTLFLAG_RWTUN, &__elfN(sigfastblock), 0,
