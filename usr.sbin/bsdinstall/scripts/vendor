@@ -36,7 +36,7 @@ f_include $BSDCFG_SHARE/pkgbase.subr || exit 1
 
 # Install pkg into the new root
 pkg_list="pkg p74-hbsdfw-core python38 beep"
-f_pkginstall "HardenedBSD Fireall Core" "$pkg_list"
+f_pkginstall "HBSDFW Firewall Core" "$pkg_list"
 
 mkdir -p ${BSDINSTALL_CHROOT}/hbsdfw-installer-pkgs
 
