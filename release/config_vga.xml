@@ -206,7 +206,7 @@
   </sysctl>
   <system>
     <optimization>normal</optimization>
-    <hostname>HardenedBSDFirewall</hostname>
+    <hostname>hbsdfw</hostname>
     <domain>localdomain</domain>
     <dnsallowoverride/>
     <group>
