@@ -14,8 +14,12 @@ export PORTSDIR="${PORTSDIR:-/usr/ports}"
 
 _DVD_PACKAGES="archivers/unzip
 devel/git
+<<<<<<< HEAD
 devel/subversion
 devel/subversion-static
+=======
+emulators/linux_base-c6
+>>>>>>> origin/freebsd/13-stable/main
 graphics/drm-legacy-kmod
 graphics/drm-stable-kmod
 misc/freebsd-doc-all
