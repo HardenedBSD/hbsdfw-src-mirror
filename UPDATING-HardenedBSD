@@ -1,3 +1,10 @@
+[20220704] Introduce Trusted Path Execution (TPE) and RTLD hardening
+__HardenedBSD_version = 1300063
+
+	Provide the start of a clean-room reimplementation of grsecurity's TPE
+	feature. Harden the RTLD against abuse, especially in cases where RTLD
+	direct exec can bypass TPE enforcement.
+
 [20220420] Introduce insecure kernel module hardening
 __HardenedBSD_version = 1300062
 
