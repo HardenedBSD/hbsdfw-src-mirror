@@ -60,6 +60,7 @@ echo 'boot_multicons="YES"' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
 echo 'boot_serial="YES"' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
 echo 'comconsole_speed=115200' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
 echo 'console=comconsole' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
-
+echo 'loader_brand="hbsd"' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
+echo 'loader_logo="hbsd"' >> ${BSDINSTALL_CHROOT}/boot/loader.conf.local
 
 #read -p "Press <CR> to continue... " NOVALUE
