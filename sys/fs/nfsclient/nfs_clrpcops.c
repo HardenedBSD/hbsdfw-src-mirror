@@ -4533,7 +4533,7 @@ nfsrpc_fsinfo(vnode_t vp, struct nfsfsinfo *fsp, struct ucred *cred,
 	int error;
 
 	*attrflagp = 0;
-	NFSCL_REQSTART(nd, NFSPROC_FSINFO, vp, cred);
+	NFSCL_REQSTART(nd, NFSPROC_FSINFO, vp, NULL);
 	error = nfscl_request(nd, vp, p, cred, stuff);
 	if (error)
 		return (error);
@@ -5844,6 +5844,7 @@ nfscl_initsessionslots(struct nfsclsession *sep)
 	for (i = 0; i < 64; i++)
 		sep->nfsess_slotseq[i] = 0;
 	sep->nfsess_slots = 0;
+	sep->nfsess_badslots = 0;
 }
 
 /*
