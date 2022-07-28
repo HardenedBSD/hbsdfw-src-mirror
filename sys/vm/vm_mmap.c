@@ -1491,13 +1491,6 @@ vm_mmap_cdev(struct thread *td, vm_size_t objsize, vm_prot_t prot,
 	return (0);
 }
 
-/*
- * vm_mmap()
- *
- * Internal version of mmap used by exec, sys5 shared memory, and
- * various device drivers.  Handle is either a vnode pointer, a
- * character device, or NULL for MAP_ANON.
- */
 int
 vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	vm_prot_t maxprot, int flags,
@@ -1516,9 +1509,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	object = NULL;
 	writecounted = FALSE;
 
-	/*
-	 * Lookup/allocate object.
-	 */
 	switch (handle_type) {
 	case OBJT_DEVICE: {
 		struct cdevsw *dsw;
@@ -1538,12 +1528,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		error = vm_mmap_vnode(td, size, prot, &maxprot, &flags,
 		    handle, &foff, &object, &writecounted);
 		break;
-	case OBJT_DEFAULT:
-		if (handle == NULL) {
-			error = 0;
-			break;
-		}
-		/* FALLTHROUGH */
 	default:
 		error = EINVAL;
 		break;
