@@ -307,7 +307,7 @@ domain_init_rmrr(struct dmar_domain *domain, device_t dev, int bus,
 				error = error1;
 			}
 			TAILQ_REMOVE(&rmrr_entries, entry, dmamap_link);
-			iommu_gas_free_entry(DOM2IODOM(domain), entry);
+			iommu_gas_free_entry(entry);
 		}
 		for (i = 0; i < size; i++)
 			vm_page_putfake(ma[i]);
@@ -848,21 +848,20 @@ dmar_find_ctx_locked(struct dmar_unit *dmar, uint16_t rid)
 void
 dmar_domain_free_entry(struct iommu_map_entry *entry, bool free)
 {
-	struct iommu_domain *domain;
-
-	domain = entry->domain;
-	IOMMU_DOMAIN_LOCK(domain);
 	if ((entry->flags & IOMMU_MAP_ENTRY_RMRR) != 0)
-		iommu_gas_free_region(domain, entry);
+		iommu_gas_free_region(entry);
 	else
-		iommu_gas_free_space(domain, entry);
-	IOMMU_DOMAIN_UNLOCK(domain);
+		iommu_gas_free_space(entry);
 	if (free)
-		iommu_gas_free_entry(domain, entry);
+		iommu_gas_free_entry(entry);
 	else
 		entry->flags = 0;
 }
 
+/*
+ * If the given value for "free" is true, then the caller must not be using
+ * the entry's dmamap_link field.
+ */
 void
 iommu_domain_unload_entry(struct iommu_map_entry *entry, bool free,
     bool cansleep)
@@ -879,17 +878,15 @@ iommu_domain_unload_entry(struct iommu_map_entry *entry, bool free,
 	 * dmar_qi_task() is finished processing it.
 	 */
 	if (unit->qi_enabled) {
-		DMAR_LOCK(unit);
 		if (free) {
-			dmar_qi_invalidate_locked(domain, entry->start,
-			    entry->end - entry->start, &entry->gseq, true);
-			TAILQ_INSERT_TAIL(&unit->tlb_flush_entries, entry,
-			    dmamap_link);
+			DMAR_LOCK(unit);
+			dmar_qi_invalidate_locked(domain, entry, true);
+			DMAR_UNLOCK(unit);
 		} else {
-			dmar_qi_invalidate_sync_locked(domain, entry->start,
+			dmar_qi_invalidate_sync(domain, entry->start,
 			    entry->end - entry->start, cansleep);
+			dmar_domain_free_entry(entry, false);
 		}
-		DMAR_UNLOCK(unit);
 	} else {
 		domain_flush_iotlb_sync(domain, entry->start, entry->end -
 		    entry->start);
@@ -937,12 +934,11 @@ iommu_domain_unload(struct iommu_domain *iodom,
 
 	KASSERT(unit->qi_enabled, ("loaded entry left"));
 	DMAR_LOCK(unit);
-	TAILQ_FOREACH(entry, entries, dmamap_link) {
-		dmar_qi_invalidate_locked(domain, entry->start, entry->end -
-		    entry->start, &entry->gseq,
+	while ((entry = TAILQ_FIRST(entries)) != NULL) {
+		TAILQ_REMOVE(entries, entry, dmamap_link);
+		dmar_qi_invalidate_locked(domain, entry,
 		    dmar_domain_unload_emit_wait(domain, entry));
 	}
-	TAILQ_CONCAT(&unit->tlb_flush_entries, entries, dmamap_link);
 	DMAR_UNLOCK(unit);
 }
 
