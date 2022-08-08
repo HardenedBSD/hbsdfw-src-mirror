@@ -250,6 +250,8 @@ int dmar_init_qi(struct dmar_unit *unit);
 void dmar_fini_qi(struct dmar_unit *unit);
 void dmar_qi_invalidate_locked(struct dmar_domain *domain, iommu_gaddr_t start,
     iommu_gaddr_t size, struct iommu_qi_genseq *psec, bool emit_wait);
+void dmar_qi_invalidate_sync_locked(struct dmar_domain *domain,
+    iommu_gaddr_t start, iommu_gaddr_t size, bool cansleep);
 void dmar_qi_invalidate_ctx_glob_locked(struct dmar_unit *unit);
 void dmar_qi_invalidate_iotlb_glob_locked(struct dmar_unit *unit);
 void dmar_qi_invalidate_iec_glob(struct dmar_unit *unit);
@@ -276,9 +278,6 @@ int dmar_move_ctx_to_domain(struct dmar_domain *domain, struct dmar_ctx *ctx);
 void dmar_free_ctx_locked(struct dmar_unit *dmar, struct dmar_ctx *ctx);
 void dmar_free_ctx(struct dmar_ctx *ctx);
 struct dmar_ctx *dmar_find_ctx_locked(struct dmar_unit *dmar, uint16_t rid);
-void dmar_domain_unload_entry(struct iommu_map_entry *entry, bool free);
-void dmar_domain_unload(struct dmar_domain *domain,
-    struct iommu_map_entries_tailq *entries, bool cansleep);
 void dmar_domain_free_entry(struct iommu_map_entry *entry, bool free);
 
 void dmar_dev_parse_rmrr(struct dmar_domain *domain, int dev_domain,
