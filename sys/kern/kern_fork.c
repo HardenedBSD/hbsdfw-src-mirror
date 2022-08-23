@@ -312,8 +312,8 @@ retry:
 static int
 fork_norfproc(struct thread *td, int flags)
 {
-	int error;
 	struct proc *p1;
+	int error;
 
 	KASSERT((flags & RFPROC) == 0,
 	    ("fork_norfproc called with RFPROC set"));
@@ -345,15 +345,16 @@ again:
 	}
 
 	error = vm_forkproc(td, NULL, NULL, NULL, flags);
-	if (error)
+	if (error != 0)
 		goto fail;
 
 	/*
 	 * Close all file descriptors.
 	 */
-	if (flags & RFCFDG) {
+	if ((flags & RFCFDG) != 0) {
 		struct filedesc *fdtmp;
 		struct pwddesc *pdtmp;
+
 		pdtmp = pdinit(td->td_proc->p_pd, false);
 		fdtmp = fdinit(td->td_proc->p_fd, false, NULL);
 		pdescfree(td);
@@ -365,7 +366,7 @@ again:
 	/*
 	 * Unshare file descriptors (from parent).
 	 */
-	if (flags & RFFDG) {
+	if ((flags & RFFDG) != 0) {
 		fdunshare(td);
 		pdunshare(td);
 	}
