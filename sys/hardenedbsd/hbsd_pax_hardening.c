@@ -390,12 +390,8 @@ extern int randompid;
 static void
 pax_randomize_pids(void *dummy __unused)
 {
-	int modulus;
-
 	if (pax_randomize_pids_global == PAX_FEATURE_SIMPLE_DISABLED)
 		return;
-
-	modulus = pid_max - 200;
 
 	sx_xlock(&allproc_lock);
 	/* Steal the logic from FreeBSD's sysctl_kern_randompid */
@@ -404,7 +400,6 @@ pax_randomize_pids(void *dummy __unused)
 }
 SYSINIT(pax_randomize_pids, SI_SUB_KTHREAD_INIT, SI_ORDER_MIDDLE+1,
     pax_randomize_pids, NULL);
-
 
 static void
 pax_init_hardening(void *dummy __unused)
