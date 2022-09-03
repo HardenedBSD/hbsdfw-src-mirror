@@ -218,8 +218,6 @@ proc_set_p2_wexit(struct proc *p)
 {
 	PROC_LOCK_ASSERT(p, MA_OWNED);
 	p->p_flag2 |= P2_WEXIT;
-	while (p->p_singlethr > 0)
-		msleep(&p->p_singlethr, &p->p_mtx, PWAIT | PCATCH, "exit1t", 0);
 }
 
 /*
@@ -503,7 +501,7 @@ exit1(struct thread *td, int rval, int signo)
 		wakeup(q->p_reaper);
 	for (; q != NULL; q = nq) {
 		nq = LIST_NEXT(q, p_sibling);
-		ksi = ksiginfo_alloc(TRUE);
+		ksi = ksiginfo_alloc(M_WAITOK);
 		PROC_LOCK(q);
 		q->p_sigparent = SIGCHLD;
 
