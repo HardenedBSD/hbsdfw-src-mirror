@@ -1563,7 +1563,7 @@ read_cmdhist(action, uparam, skip_search, skip_shell)
 addhist_init(uparam, ml, string)
 	void *uparam;
 	struct mlist *ml;
-	char constant *string;
+	char *string;
 {
 	if (ml != NULL)
 		cmd_addhist(ml, string, 0);
