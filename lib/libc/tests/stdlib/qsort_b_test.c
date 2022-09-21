@@ -1,12 +1,6 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
- * Copyright (c) 2019 Ruslan Bukin <br@bsdpad.com>
- *
- * This software was developed by SRI International and the University of
- * Cambridge Computer Laboratory (Department of Computer Science and
- * Technology) under DARPA contract HR0011-18-C-0016 ("ECATS"), as part of the
- * DARPA SSITH research programme.
+ * Copyright (C) 2004 Maxim Sobolev <sobomax@FreeBSD.org>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,24 +24,53 @@
  * SUCH DAMAGE.
  */
 
-#include <machine/asm.h>
-__FBSDID("$FreeBSD$");
-
-.macro arm_smccc_1_0	insn
-ENTRY(arm_smccc_\insn)
-	\insn	#0
-	ldr	x4, [sp]
-	cbz	x4, 1f
-	stp	x0, x1, [x4, #16 * 0]
-	stp	x2, x3, [x4, #16 * 1]
-1:	ret
-END(arm_smccc_\insn)
-.endm
-
 /*
- * int arm_smccc_*(register_t, register_t, register_t, register_t,
- *     register_t, register_t, register_t, register_t,
- *     struct arm_smccc_res *res)
+ * Test for qsort_b() routine.
  */
-arm_smccc_1_0	hvc
-arm_smccc_1_0	smc
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "test-sort.h"
+
+ATF_TC_WITHOUT_HEAD(qsort_b_test);
+ATF_TC_BODY(qsort_b_test, tc)
+{
+	int testvector[IVEC_LEN];
+	int sresvector[IVEC_LEN];
+	int i, j;
+
+	for (j = 2; j < IVEC_LEN; j++) {
+		/* Populate test vectors */
+		for (i = 0; i < j; i++)
+			testvector[i] = sresvector[i] = initvector[i];
+
+		/* Sort using qsort_b(3) */
+		qsort_b(testvector, j, sizeof(testvector[0]),
+		    ^(const void* a, const void* b) {
+			if (*(int *)a > *(int *)b)
+			    return (1);
+			else if (*(int *)a < *(int *)b)
+			    return (-1);
+			else
+			    return (0);
+		    });
+		/* Sort using reference slow sorting routine */
+		ssort(sresvector, j);
+
+		/* Compare results */
+		for (i = 0; i < j; i++)
+			ATF_CHECK_MSG(testvector[i] == sresvector[i],
+			    "item at index %d didn't match: %d != %d",
+			    i, testvector[i], sresvector[i]);
+	}
+}
+
+ATF_TP_ADD_TCS(tp)
+{
+
+	ATF_TP_ADD_TC(tp, qsort_b_test);
+
+	return (atf_no_error());
+}
