@@ -357,18 +357,25 @@ struct {								\
 } while (/*CONSTCOND*/ 0)
 
 /*
- * Something to be invoked in a loop at the root of every modified subtree,
- * from the bottom up to the root, to update augmented node data.
+ * Either RB_AUGMENT or RB_AUGMENT_CHECK is invoked in a loop at the root of
+ * every modified subtree, from the bottom up to the root, to update augmented
+ * node data.  RB_AUGMENT_CHECK returns true only when the update changes the
+ * node data, so that updating can be stopped short of the root when it returns
+ * false.
  */
+#ifndef RB_AUGMENT_CHECK
 #ifndef RB_AUGMENT
-#define RB_AUGMENT(x)	break
+#define RB_AUGMENT_CHECK(x) 0
+#else
+#define RB_AUGMENT_CHECK(x) (RB_AUGMENT(x), 1)
+#endif
 #endif
 
 #define RB_UPDATE_AUGMENT(elm, field) do {				\
 	__typeof(elm) rb_update_tmp = (elm);				\
-	do {								\
-		RB_AUGMENT(rb_update_tmp);				\
-	} while ((rb_update_tmp = RB_PARENT(rb_update_tmp, field)) != NULL); \
+	while (RB_AUGMENT_CHECK(rb_update_tmp) &&			\
+	    (rb_update_tmp = RB_PARENT(rb_update_tmp, field)) != NULL)	\
+		;							\
 } while (0)
 
 #define RB_SWAP_CHILD(head, par, out, in, field) do {			\
@@ -422,9 +429,10 @@ struct {								\
 #define RB_PROTOTYPE_RANK(name, type, attr)
 #endif
 #define RB_PROTOTYPE_INSERT_COLOR(name, type, attr)			\
-	attr void name##_RB_INSERT_COLOR(struct name *, struct type *)
+	attr struct type *name##_RB_INSERT_COLOR(struct name *,		\
+	    struct type *, struct type *)
 #define RB_PROTOTYPE_REMOVE_COLOR(name, type, attr)			\
-	attr void name##_RB_REMOVE_COLOR(struct name *,			\
+	attr struct type *name##_RB_REMOVE_COLOR(struct name *,		\
 	    struct type *, struct type *)
 #define RB_PROTOTYPE_REMOVE(name, type, attr)				\
 	attr struct type *name##_RB_REMOVE(struct name *, struct type *)
@@ -464,7 +472,16 @@ struct {								\
 	RB_GENERATE_REINSERT(name, type, field, cmp, attr)
 
 #ifdef _RB_DIAGNOSTIC
+#ifndef RB_AUGMENT
+#define _RB_AUGMENT_VERIFY(x) RB_AUGMENT_CHECK(x)
+#else
+#define _RB_AUGMENT_VERIFY(x) 0
+#endif
 #define RB_GENERATE_RANK(name, type, field, attr)			\
+/*									\
+ * Return the rank of the subtree rooted at elm, or -1 if the subtree	\
+ * is not rank-balanced, or has inconsistent augmentation data.
+ */									\
 attr int								\
 name##_RB_RANK(struct type *elm)					\
 {									\
@@ -481,7 +498,8 @@ name##_RB_RANK(struct type *elm)					\
 	right_rank = ((_RB_BITS(up) & _RB_R) ? 2 : 1) +			\
 	    name##_RB_RANK(right);					\
 	if (left_rank != right_rank ||					\
-	    (left_rank == 2 && left == NULL && right == NULL))		\
+	    (left_rank == 2 && left == NULL && right == NULL) ||	\
+	    _RB_AUGMENT_VERIFY(elm))					\
 		return (-1);						\
 	return (left_rank);						\
 }
@@ -490,8 +508,9 @@ name##_RB_RANK(struct type *elm)					\
 #endif
 
 #define RB_GENERATE_INSERT_COLOR(name, type, field, attr)		\
-attr void								\
-name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
+attr struct type *							\
+name##_RB_INSERT_COLOR(struct name *head,				\
+    struct type *parent, struct type *elm)				\
 {									\
 	/*								\
 	 * Initially, elm is a leaf.  Either its parent was previously	\
@@ -503,19 +522,18 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 	 * uninitialized 'child', and a later iteration can only happen \
 	 * when a value has been assigned to 'child' in the previous    \
 	 * one.								\
-	 */							\
-	struct type *child, *child_up, *gpar, *parent;			\
+	 */								\
+	struct type *child, *child_up, *gpar;				\
 	__uintptr_t elmdir, sibdir;					\
 									\
-	gpar = _RB_UP(elm, field);					\
-	while ((parent = gpar) != NULL) {				\
+	do {								\
 		/* the rank of the tree rooted at elm grew */		\
 		gpar = _RB_UP(parent, field);				\
 		elmdir = RB_RIGHT(parent, field) == elm ? _RB_R : _RB_L; \
 		if (_RB_BITS(gpar) & elmdir) {				\
 			/* shorten the parent-elm edge to rebalance */	\
 			_RB_BITSUP(parent, field) ^= elmdir;		\
-			return;						\
+			return (NULL);					\
 		}							\
 		sibdir = elmdir ^ _RB_LR;				\
 		/* the other edge must change length */			\
@@ -580,11 +598,16 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 		RB_ROTATE(parent, child, sibdir, field);		\
 		_RB_UP(child, field) = gpar;				\
 		RB_SWAP_CHILD(head, gpar, parent, child, field);	\
+		/*							\
+		 * Elements rotated down have new, smaller subtrees,	\
+		 * so update augmentation for them.			\
+		 */							\
 		if (elm != child)					\
-			RB_AUGMENT(elm);				\
-		RB_AUGMENT(parent);					\
-		break;							\
-	}								\
+			(void)RB_AUGMENT_CHECK(elm);			\
+		(void)RB_AUGMENT_CHECK(parent);				\
+		return (child);						\
+	} while ((parent = gpar) != NULL);				\
+	return (NULL);							\
 }
 
 #ifndef RB_STRICT_HST
@@ -599,7 +622,7 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 #endif
 
 #define RB_GENERATE_REMOVE_COLOR(name, type, field, attr)		\
-attr void								\
+attr struct type *							\
 name##_RB_REMOVE_COLOR(struct name *head,				\
     struct type *parent, struct type *elm)				\
 {									\
@@ -613,7 +636,7 @@ name##_RB_REMOVE_COLOR(struct name *head,				\
 		_RB_UP(parent, field) = _RB_PTR(_RB_UP(parent, field));	\
 		elm = parent;						\
 		if ((parent = _RB_UP(elm, field)) == NULL)		\
-			return;						\
+			return (NULL);					\
 	}								\
 	do {								\
 		/* the rank of the tree rooted at elm shrank */		\
@@ -623,7 +646,7 @@ name##_RB_REMOVE_COLOR(struct name *head,				\
 		if (_RB_BITS(gpar) & elmdir) {				\
 			/* lengthen the parent-elm edge to rebalance */	\
 			_RB_UP(parent, field) = gpar;			\
-			return;						\
+			return (NULL);					\
 		}							\
 		if (_RB_BITS(gpar) & _RB_LR) {				\
 			/* shorten other edge, retry from parent */	\
@@ -705,11 +728,24 @@ name##_RB_REMOVE_COLOR(struct name *head,				\
 		RB_ROTATE(parent, elm, elmdir, field);			\
 		RB_SET_PARENT(elm, gpar, field);			\
 		RB_SWAP_CHILD(head, gpar, parent, elm, field);		\
+		/*							\
+		 * An element rotated down, but not into the search	\
+		 * path has a new, smaller subtree, so update		\
+		 * augmentation for it.					\
+		 */							\
 		if (sib != elm)						\
-			RB_AUGMENT(sib);				\
-		break;							\
+			(void)RB_AUGMENT_CHECK(sib);			\
+		return (parent);					\
 	} while (elm = parent, (parent = gpar) != NULL);		\
+	return (NULL);							\
 }
+
+#define _RB_AUGMENT_WALK(elm, match, field)				\
+do {									\
+	if (match == elm)						\
+		match = NULL;						\
+} while (RB_AUGMENT_CHECK(elm) &&					\
+    (elm = RB_PARENT(elm, field)) != NULL)
 
 #define RB_GENERATE_REMOVE(name, type, field, attr)			\
 attr struct type *							\
@@ -743,12 +779,23 @@ name##_RB_REMOVE(struct name *head, struct type *out)			\
 	if (child != NULL)						\
 		_RB_UP(child, field) = parent;				\
 	if (parent != NULL) {						\
-		name##_RB_REMOVE_COLOR(head, parent, child);		\
+		opar = name##_RB_REMOVE_COLOR(head, parent, child);	\
 		/* if rotation has made 'parent' the root of the same	\
 		 * subtree as before, don't re-augment it. */		\
-		if (parent == in && RB_LEFT(parent, field) == NULL)	\
+		if (parent == in && RB_LEFT(parent, field) == NULL) {	\
+			opar = NULL;					\
 			parent = RB_PARENT(parent, field);		\
-		RB_UPDATE_AUGMENT(parent, field);			\
+		}							\
+		_RB_AUGMENT_WALK(parent, opar, field);			\
+		if (opar != NULL) {					\
+			/*						\
+			 * Elements rotated into the search path have	\
+			 * changed subtrees, so update augmentation for	\
+			 * them if AUGMENT_WALK didn't.			\
+			 */						\
+			(void)RB_AUGMENT_CHECK(opar);			\
+			(void)RB_AUGMENT_CHECK(RB_PARENT(opar, field));	\
+		}							\
 	}								\
 	return (out);							\
 }
@@ -774,8 +821,16 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 	}								\
 	RB_SET(elm, parent, field);					\
 	*tmpp = elm;							\
-	name##_RB_INSERT_COLOR(head, elm);				\
-	RB_UPDATE_AUGMENT(elm, field);					\
+	if (parent != NULL)						\
+		tmp = name##_RB_INSERT_COLOR(head, parent, elm);	\
+	_RB_AUGMENT_WALK(elm, tmp, field);				\
+	if (tmp != NULL)						\
+		/*							\
+		 * An element rotated into the search path has a	\
+		 * changed subtree, so update augmentation for it if	\
+		 * AUGMENT_WALK didn't.					\
+		 */							\
+		(void)RB_AUGMENT_CHECK(tmp);				\
 	return (NULL);							\
 }
 
