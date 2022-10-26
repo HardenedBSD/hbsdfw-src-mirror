@@ -1850,7 +1850,6 @@ restart_locked:
 	return (ENOENT);
 }
 
-<<<<<<< HEAD
 static struct tmpfs_extattr_list_entry *
 tmpfs_node_has_extattr(struct tmpfs_node *node, int attrnamespace,
     const char *name, bool dolock)
@@ -1922,8 +1921,9 @@ tmpfs_extattr_get(struct vnode *vp, int attrnamespace, const char *name,
 		uio->uio_offset = 0;
 		error = uiomove(attr->tele_value, len, uio);
 	}
+	return (error);
+}
 
-=======
 static off_t
 tmpfs_seek_data_locked(vm_object_t obj, off_t noff)
 {
@@ -2021,12 +2021,10 @@ tmpfs_seek_datahole(struct vnode *vp, off_t *off, bool seekdata)
 	error = tmpfs_seek_clamp(tn, &noff, seekdata);
 	if (error == 0)
 		*off = noff;
->>>>>>> origin/freebsd/13-stable/main
 	return (error);
 }
 
 static int
-<<<<<<< HEAD
 tmpfs_setextattr(struct vop_setextattr_args *ap)
 {
 
@@ -2209,7 +2207,7 @@ vop_deleteextattr {
 	    ap->a_cred, ap->a_td));
 }
 
-=======
+static int
 tmpfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
@@ -2234,7 +2232,6 @@ tmpfs_ioctl(struct vop_ioctl_args *ap)
 	return (error);
 }
 
->>>>>>> origin/freebsd/13-stable/main
 /*
  * Vnode operations vector used for files stored in a tmpfs file system.
  */
