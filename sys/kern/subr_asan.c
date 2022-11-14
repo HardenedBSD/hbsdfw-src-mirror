@@ -527,7 +527,6 @@ kasan_copyout(const void *kaddr, void *uaddr, size_t len)
 /* -------------------------------------------------------------------------- */
 
 #include <machine/atomic.h>
-#define	ATOMIC_SAN_PREFIX	kasan
 #include <sys/atomic_san.h>
 
 #define _ASAN_ATOMIC_FUNC_ADD(name, type)				\
@@ -755,6 +754,7 @@ ASAN_ATOMIC_FUNC_FCMPSET(int, u_int);
 ASAN_ATOMIC_FUNC_FCMPSET(long, u_long);
 ASAN_ATOMIC_FUNC_FCMPSET(ptr, uintptr_t);
 
+_ASAN_ATOMIC_FUNC_LOAD(bool, bool);
 ASAN_ATOMIC_FUNC_LOAD(8, uint8_t);
 ASAN_ATOMIC_FUNC_LOAD(16, uint16_t);
 ASAN_ATOMIC_FUNC_LOAD(32, uint32_t);
@@ -765,6 +765,7 @@ ASAN_ATOMIC_FUNC_LOAD(int, u_int);
 ASAN_ATOMIC_FUNC_LOAD(long, u_long);
 ASAN_ATOMIC_FUNC_LOAD(ptr, uintptr_t);
 
+_ASAN_ATOMIC_FUNC_STORE(bool, bool);
 ASAN_ATOMIC_FUNC_STORE(8, uint8_t);
 ASAN_ATOMIC_FUNC_STORE(16, uint16_t);
 ASAN_ATOMIC_FUNC_STORE(32, uint32_t);
@@ -789,7 +790,6 @@ kasan_atomic_interrupt_fence(void)
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#define	BUS_SAN_PREFIX	kasan
 #include <sys/bus_san.h>
 
 int
